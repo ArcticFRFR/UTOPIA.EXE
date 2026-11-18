@@ -36,8 +36,12 @@ Settings: `tauri-plugin-store` (`utopia.settings.json` in the app data dir). The
   `start` = that end so the intraday gap is replayed, folds replayed trades into 1-minute bars (sent as four
   pseudo-ticks each on the `md:tick` event), then forwards raw trades once within 5s of the clock. Live needs a
   Databento CME plan (Standard, ~$199/mo in 2026); without it history alone works and the chart ends at the range end.
-  Continuous front month is `NQ.c.0` ("NQ" in the symbol box); dated symbols are raw. Keys are per user; a student
-  would need their own key or Databento's redistribution terms, so the Academy will not fan this feed out as-is.
+  Continuous front month is `NQ.c.0` ("NQ" in the symbol box); dated symbols are raw.
+- One key for every install (Arctic's call, Nov 18 2026: the installs are all his own machines): the CI secret
+  `DATABENTO_API_KEY` is compiled into the Windows build (`build.rs` scrambles it into `UTOPIA_DB_KEY_OBF`,
+  `databento::builtin_key` unscrambles it); Settings overrides it; a build with a built-in key starts on Databento.
+  A key in an exe can be extracted by anyone holding the exe, and a shared key counts every install against one
+  account and its live-session limits, so this is for his own machines, not for handing to students.
 - Dev fixtures: `public/dev/` (gitignored) may hold `bars-1m.json`, `bars-5m.json`, `ctx-1h.json` of real bars and
   `overlay-<tfSec>.json`; in `npm run dev` the demo provider and the sealed indicator pick them up so the browser shows
   real data with the real overlay. `cargo run --example overlay -- bars.json ctx.json 300 > overlay-300.json`

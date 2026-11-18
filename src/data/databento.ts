@@ -22,7 +22,10 @@ export class DatabentoProvider implements MarketDataProvider {
 
   async connect() {
     if (!inTauri()) throw new ProviderError("Databento runs inside the desktop app", "Open Utopia.exe; the browser build cannot reach it.");
-    if (!this.cfg.apiKey) throw new ProviderError("Databento API key missing", "Settings → Databento → API key (databento.com/portal/keys).");
+    if (!this.cfg.apiKey) {
+      const { appInfo } = await import("@/lib/tauri");
+      if (!(await appInfo()).databento_builtin) throw new ProviderError("Databento API key missing", "Settings → Databento → API key (databento.com/portal/keys).");
+    }
   }
   async disconnect() {
     if (!inTauri()) return;

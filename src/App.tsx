@@ -24,9 +24,14 @@ export function App() {
   const [info, setInfo] = useState<AppInfo | null>(null);
 
   useEffect(() => {
-    void loadSetting<ProviderSettings>("provider", DEFAULT_SETTINGS).then((s) => setSettings({ ...DEFAULT_SETTINGS, ...s }));
+    void (async () => {
+      const i = await appInfo();
+      setInfo(i);
+      const saved = await loadSetting<ProviderSettings | null>("provider", null);
+      if (saved) setSettings({ ...DEFAULT_SETTINGS, ...saved });
+      else setSettings({ ...DEFAULT_SETTINGS, provider: i.databento_builtin ? "databento" : "demo" });
+    })();
     void loadSetting<boolean>("shield", false).then(setShield);
-    void appInfo().then(setInfo);
   }, []);
 
   // The capture block: the vault forces it on; elsewhere it follows the user's setting.

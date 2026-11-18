@@ -16,6 +16,8 @@ struct AppInfo {
     version: &'static str,
     os: &'static str,
     content_protection_supported: bool,
+    /// true when a Databento key is compiled into this build
+    databento_builtin: bool,
 }
 
 #[tauri::command]
@@ -24,6 +26,7 @@ fn app_info() -> AppInfo {
         version: env!("CARGO_PKG_VERSION"),
         os: std::env::consts::OS,
         content_protection_supported: cfg!(any(target_os = "windows", target_os = "macos")),
+        databento_builtin: databento::builtin_key().is_some(),
     }
 }
 

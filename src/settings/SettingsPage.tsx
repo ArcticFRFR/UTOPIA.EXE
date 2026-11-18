@@ -33,7 +33,8 @@ export function SettingsPage({ settings, onChange, shield, onShield, info }: Pro
 
         {settings.provider === "databento" && (
           <>
-            <div className="field"><label>API key</label><input type="password" value={db.apiKey} onChange={(e) => set("databento", { ...db, apiKey: e.target.value })} placeholder="db-..." /></div>
+            <div className="field"><label>API key</label><input type="password" value={db.apiKey} onChange={(e) => set("databento", { ...db, apiKey: e.target.value })} placeholder={info?.databento_builtin ? "built into this build (leave empty to use it)" : "db-..."} /></div>
+            {info?.databento_builtin && <p className="ok">A key is built into this build; every install of it shares that account.</p>}
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
               <button className={`toggle ${db.live ? "on" : ""}`} onClick={() => set("databento", { ...db, live: !db.live })} aria-label="Live stream" />
               <span className="hint">Live stream (needs a Databento CME plan; history alone works on pay-as-you-go credit)</span>

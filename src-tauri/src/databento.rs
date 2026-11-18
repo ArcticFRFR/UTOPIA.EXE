@@ -48,6 +48,24 @@ pub struct ContractInfo {
 
 static LIVE: Mutex<Option<tauri::async_runtime::JoinHandle<()>>> = Mutex::new(None);
 
+/// The key compiled into this build, if the build had one (see build.rs).
+pub fn builtin_key() -> Option<String> {
+    let hex = option_env!("UTOPIA_DB_KEY_OBF")?;
+    let mask = b"utopia-apostles-seal";
+    let bytes: Option<Vec<u8>> = (0..hex.len() / 2)
+        .map(|i| u8::from_str_radix(&hex[i * 2..i * 2 + 2], 16).ok().map(|b| b ^ mask[i % mask.len()]))
+        .collect();
+    String::from_utf8(bytes?).ok().filter(|k| !k.is_empty())
+}
+
+/// The key to use: the one from Settings when given, else the built-in one.
+pub fn effective_key(key: &str) -> Result<String, String> {
+    if !key.trim().is_empty() {
+        return Ok(key.trim().to_string());
+    }
+    builtin_key().ok_or_else(|| "No Databento key: enter one in Settings or build with DATABENTO_API_KEY".to_string())
+}
+
 fn px(v: i64) -> f64 {
     v as f64 / FIXED_PRICE_SCALE as f64
 }
@@ -79,7 +97,8 @@ fn stype_for(symbol: &str) -> SType {
 /// Historical OHLCV bars, oldest first. `tf_sec` picks the schema (1m, 1h or 1d); the web side
 /// resamples anything in between. Returns the bars and the exclusive end of the available range.
 pub async fn history(key: &str, symbol: &str, tf_sec: i64, count: i64) -> Result<(Vec<Bar>, i64), String> {
-    let mut client = HistoricalClient::builder().key(key).map_err(e)?.build().map_err(e)?;
+    let key = effective_key(key)?;
+    let mut client = HistoricalClient::builder().key(&key).map_err(e)?.build().map_err(e)?;
     let range = client.metadata().get_dataset_range(Dataset::GlbxMdp3.as_str()).await.map_err(e)?;
     let (schema, step) = if tf_sec >= 86_400 { (Schema::Ohlcv1D, 86_400) } else if tf_sec >= 3600 { (Schema::Ohlcv1H, 3600) } else { (Schema::Ohlcv1M, 60) };
     let bars_wanted = count.max(1) * (tf_sec / step).max(1);
@@ -120,6 +139,7 @@ pub async fn history(key: &str, symbol: &str, tf_sec: i64, count: i64) -> Result
 /// replay the intraday trades from there first; it is clamped to the last 23 hours.
 pub async fn live_start(app: AppHandle, key: String, symbol: String, since: i64) -> Result<(), String> {
     live_stop();
+    let key = effective_key(&key)?;
     let mut client = LiveClient::builder().key(&key).map_err(e)?.dataset(Dataset::GlbxMdp3).build().await.map_err(e)?;
     let now = OffsetDateTime::now_utc().unix_timestamp();
     let since = since.max(now - 23 * 3600);
