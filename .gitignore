@@ -7,3 +7,6 @@ src-tauri/target
 src-tauri/gen/schemas
 .vite
 coverage
+
+# real-data dev fixtures (never committed)
+public/dev

@@ -22,6 +22,9 @@ tauri-plugin-log = "2"
 tauri-plugin-store = "2"
 chrono = "0.4"
 chrono-tz = "0.10"
+databento = { version = "0.65", features = ["historical", "live"] }
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+time = { version = "0.3.55", features = ["macros"] }
 
 [profile.release]
 codegen-units = 1

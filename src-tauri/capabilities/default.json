@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Main window: core APIs and the local settings store.",
   "windows": ["main"],
-  "permissions": ["core:default", "store:default"]
+  "permissions": ["core:default", "store:default", "core:event:default"]
 }

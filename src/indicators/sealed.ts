@@ -41,7 +41,15 @@ export const SEALED: IndicatorDef = {
     { key: "dailyOpen", label: "Daily open", color: "rgba(239,232,218,0.9)", lineWidth: 1, lineStyle: "dotted" },
   ],
   async compute(input: ComputeInput, params: Params) {
-    if (!inTauri()) return { plots: {}, overlay: devFixture(input) };
+    if (!inTauri()) {
+      if (import.meta.env.DEV) {
+        try {
+          const r = await fetch(`/dev/overlay-${input.tfSec}.json`);
+          if (r.ok && (r.headers.get("content-type") ?? "").includes("json")) { const overlay = (await r.json()) as Overlay; return { plots: overlay.plots, overlay }; }
+        } catch { /* no saved overlay */ }
+      }
+      return { plots: {}, overlay: devFixture(input) };
+    }
     const { invoke } = await import("@tauri-apps/api/core");
     const overlay = await invoke<Overlay>("compute_sealed", { bars: input.bars, ctx: input.ctx, tfSec: input.tfSec, params });
     return { plots: overlay.plots, overlay };

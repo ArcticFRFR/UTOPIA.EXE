@@ -11,7 +11,7 @@ interface Props {
 
 export function SettingsPage({ settings, onChange, shield, onShield, info }: Props) {
   const set = <K extends keyof ProviderSettings>(k: K, v: ProviderSettings[K]) => onChange({ ...settings, [k]: v });
-  const tv = settings.tradovate, px = settings.projectx, rt = settings.rithmic;
+  const tv = settings.tradovate, px = settings.projectx, rt = settings.rithmic, db = settings.databento;
 
   return (
     <section className="view page">
@@ -24,11 +24,23 @@ export function SettingsPage({ settings, onChange, shield, onShield, info }: Pro
           <label>Provider</label>
           <select value={settings.provider} onChange={(e) => set("provider", e.target.value as ProviderId)}>
             <option value="demo">Demo (offline random walk)</option>
+            <option value="databento">Databento (licensed CME feed)</option>
             <option value="tradovate">Tradovate</option>
             <option value="projectx">ProjectX (TopstepX, Alpha Futures, Bulenox)</option>
             <option value="rithmic">Rithmic (not wired yet)</option>
           </select>
         </div>
+
+        {settings.provider === "databento" && (
+          <>
+            <div className="field"><label>API key</label><input type="password" value={db.apiKey} onChange={(e) => set("databento", { ...db, apiKey: e.target.value })} placeholder="db-..." /></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <button className={`toggle ${db.live ? "on" : ""}`} onClick={() => set("databento", { ...db, live: !db.live })} aria-label="Live stream" />
+              <span className="hint">Live stream (needs a Databento CME plan; history alone works on pay-as-you-go credit)</span>
+            </div>
+            <p className="hint">Keys: databento.com → Portal → API keys. Dataset GLBX.MDP3. "NQ" charts the front month; a dated symbol like NQZ6 is used as-is.</p>
+          </>
+        )}
 
         {settings.provider === "tradovate" && (
           <>

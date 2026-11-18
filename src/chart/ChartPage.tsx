@@ -9,8 +9,6 @@ import { useMarket } from "./useMarket";
 
 const DEFAULT_INSTANCES: IndicatorInstance[] = [
   { key: "sealed-1", defId: "sealed", params: defaultParams(byId("sealed")!), enabled: true },
-  { key: "ema-1", defId: "ema", params: { len: 21 }, enabled: true },
-  { key: "vwap-1", defId: "vwap", params: {}, enabled: true },
 ];
 
 export function ChartPage({ settings }: { settings: ProviderSettings }) {
@@ -23,7 +21,8 @@ export function ChartPage({ settings }: { settings: ProviderSettings }) {
 
   useEffect(() => {
     void loadSetting<{ symbol: string; tf: Timeframe; instances: IndicatorInstance[] }>("chart", { symbol, tf, instances }).then((c) => {
-      setSymbol(c.symbol); setDraft(c.symbol); setTf(c.tf); setInstances(c.instances);
+      setSymbol(c.symbol); setDraft(c.symbol); setTf(c.tf);
+      setInstances(c.instances.filter((i) => byId(i.defId))); // drop instances of indicators that no longer exist
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

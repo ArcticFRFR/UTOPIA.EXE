@@ -1,3 +1,4 @@
+import { DatabentoProvider } from "./databento";
 import { DemoProvider } from "./demo";
 import { ProjectXProvider } from "./projectx";
 import type { MarketDataProvider, ProviderSettings } from "./provider";
@@ -6,6 +7,7 @@ import { TradovateProvider } from "./tradovate";
 
 export function createProvider(s: ProviderSettings): MarketDataProvider {
   switch (s.provider) {
+    case "databento": return new DatabentoProvider(s.databento);
     case "tradovate": return new TradovateProvider(s.tradovate);
     case "projectx": return new ProjectXProvider(s.projectx);
     case "rithmic": return new RithmicProvider(s.rithmic);

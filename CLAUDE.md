@@ -23,12 +23,25 @@ Settings: `tauri-plugin-store` (`utopia.settings.json` in the app data dir). The
 
 ## How it is put together
 - `src/data/provider.ts` is the one interface the chart knows: `connect / resolve / history / subscribeTicks`.
-  `demo.ts` (deterministic random walk so the app works offline, labelled DEMO), `tradovate.ts` (REST auth +
+  `databento.ts` + `src-tauri/src/databento.rs` (the licensed CME feed, see below), `demo.ts` (deterministic random
+  walk so the app works offline, labelled DEMO), `tradovate.ts` (REST auth +
   SockJS-style market data websocket: `md/getChart`, `md/subscribeQuote`), `projectx.ts` (REST `loginKey`,
   `Contract/search`, `History/retrieveBars`; SignalR market hub `GatewayTrade`), `rithmic.ts` (stub; R|Protocol needs
   Rithmic's kit and conformance). Firm hosts for ProjectX are in `PROJECTX_HOSTS`. The broker adapters were written
   from the public API docs and have NOT been run against live accounts yet (no credentials in the cloud); expect to
   touch field names on first contact.
+- **Databento** (Nov 18 2026, verified against the real API): dataset GLBX.MDP3, official `databento` crate on the
+  Rust side. `databento_history` pulls ohlcv-1m/1h/1d from the Historical API (pay-as-you-go; a week of NQ minutes
+  cost $0.04) up to the dataset range end, and returns that end. `databento_live_start` opens the Live gateway with
+  `start` = that end so the intraday gap is replayed, folds replayed trades into 1-minute bars (sent as four
+  pseudo-ticks each on the `md:tick` event), then forwards raw trades once within 5s of the clock. Live needs a
+  Databento CME plan (Standard, ~$199/mo in 2026); without it history alone works and the chart ends at the range end.
+  Continuous front month is `NQ.c.0` ("NQ" in the symbol box); dated symbols are raw. Keys are per user; a student
+  would need their own key or Databento's redistribution terms, so the Academy will not fan this feed out as-is.
+- Dev fixtures: `public/dev/` (gitignored) may hold `bars-1m.json`, `bars-5m.json`, `ctx-1h.json` of real bars and
+  `overlay-<tfSec>.json`; in `npm run dev` the demo provider and the sealed indicator pick them up so the browser shows
+  real data with the real overlay. `cargo run --example overlay -- bars.json ctx.json 300 > overlay-300.json`
+  (src-tauri/examples/overlay.rs) computes the overlay outside the app. Nothing in it ships.
 - `src/data/aggregate.ts`: bar opens, resampling and tick → bar. Daily bars open 22:00 UTC (Globex). Tested.
 - `src/indicators/`: `types.ts` (an indicator = params + plots + `compute({bars, ctx, tfSec}, params)` returning
   `{plots, overlay?}`), `builtins.ts`, `sealed.ts` (calls Rust `compute_sealed`), `engine.ts` (`computeAll` + a
@@ -38,7 +51,8 @@ Settings: `tauri-plugin-store` (`utopia.settings.json` in the app data dir). The
 - The sealed overlay (`Overlay` in types.ts, mirrored by the Rust struct): boxes, hlines, vlines, texts, per-bar
   vector-candle flags, two plots (weekly/daily open) and the HTF sets, plus `rightOffsetBars` so the chart leaves room
   on the right. `src/chart/OverlayPrimitive.ts` is a Lightweight Charts series primitive that draws it; it maps times
-  to logical bar indices itself so shapes can reach past the last bar. Time rules inside Rust: everything on New York's
+  to logical bar indices itself so shapes can reach past the last bar; the HTF sets use a bar unit floored at 4px so
+  they stay readable zoomed out, and the chart's `rightOffset` is derived from that at the current zoom. Time rules inside Rust: everything on New York's
   clock except the London box (London) and the Frankfurt open (Berlin), via `chrono-tz`; CME trading date = NY date of
   (t + 6h); day 18:00→17:00 NY; week = ISO week of the trading date, ending Friday 17:00 NY.
 - `src/chart/useMarket.ts` owns the provider and the bar array (a ref mutated by ticks; `version` bumps re-renders).

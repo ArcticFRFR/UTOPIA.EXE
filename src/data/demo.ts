@@ -65,12 +65,34 @@ export class DemoProvider implements MarketDataProvider {
     return bars;
   }
 
+  private devReal: Bar[] | null | undefined; // undefined = not checked yet
+
+  /** Dev only: real bars saved under public/dev (gitignored) stand in for the random walk when present. */
+  private async devBase(): Promise<Bar[] | null> {
+    if (this.devReal !== undefined) return this.devReal;
+    this.devReal = null;
+    if (import.meta.env.DEV) {
+      try {
+        const r = await fetch("/dev/bars-1m.json");
+        if (r.ok && (r.headers.get("content-type") ?? "").includes("json")) this.devReal = (await r.json()) as Bar[];
+      } catch { /* no fixture */ }
+    }
+    return this.devReal;
+  }
+
+  get usingDevData() { return !!this.devReal; }
+
   async history(_c: ContractInfo, tf: Timeframe, count: number): Promise<Bar[]> {
-    const all = resample(this.baseSeries(), tf);
+    const real = await this.devBase();
+    if (real && tf === "1h") {
+      try { const r = await fetch("/dev/ctx-1h.json"); if (r.ok) { const ctx = (await r.json()) as Bar[]; return ctx.slice(Math.max(0, ctx.length - count)); } } catch { /* fall through */ }
+    }
+    const all = resample(real ?? this.baseSeries(), tf);
     return all.slice(Math.max(0, all.length - count));
   }
 
   async subscribeTicks(_c: ContractInfo, onTick: (t: Tick) => void): Promise<() => void> {
+    if (this.usingDevData) return () => {}; // saved real bars stay as saved
     let alive = true;
     const loop = () => {
       if (!alive) return;

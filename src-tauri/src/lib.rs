@@ -6,6 +6,7 @@
 //!   Teams, Discord streams and any other software capture;
 //! - the sealed indicator (`sealed.rs`): compiled into the .exe rather than shipped as readable JS.
 
+mod databento;
 mod sealed;
 
 use tauri::Manager;
@@ -46,6 +47,34 @@ fn compute_sealed(
     sealed::compute(&bars, &ctx, tf_sec, &params)
 }
 
+#[tauri::command]
+fn databento_resolve(symbol: String) -> databento::ContractInfo {
+    databento::resolve(&symbol)
+}
+
+#[derive(serde::Serialize)]
+struct History {
+    bars: Vec<databento::Bar>,
+    /// exclusive end of Databento's historical range (unix seconds): where live replay should start
+    end: i64,
+}
+
+#[tauri::command]
+async fn databento_history(key: String, symbol: String, tf_sec: i64, count: i64) -> Result<History, String> {
+    let (bars, end) = databento::history(&key, &symbol, tf_sec, count).await?;
+    Ok(History { bars, end })
+}
+
+#[tauri::command]
+async fn databento_live_start(app: tauri::AppHandle, key: String, symbol: String, since: i64) -> Result<(), String> {
+    databento::live_start(app, key, symbol, since).await
+}
+
+#[tauri::command]
+fn databento_live_stop() {
+    databento::live_stop();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -64,7 +93,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![app_info, set_content_protection, compute_sealed])
+        .invoke_handler(tauri::generate_handler![app_info, set_content_protection, compute_sealed, databento_resolve, databento_history, databento_live_start, databento_live_stop])
         .run(tauri::generate_context!())
         .expect("error while running Utopia");
 }

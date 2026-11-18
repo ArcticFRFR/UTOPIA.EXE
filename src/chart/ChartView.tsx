@@ -90,7 +90,8 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
     const data = bars.current;
     candles.current?.setData(data.map((b, i) => candleItem(b, flags.current[i] ?? 0)));
     volume.current?.setData(data.map((b) => ({ time: b.time as UTCTimestamp, value: b.volume, color: b.close >= b.open ? "rgba(57,217,138,.28)" : "rgba(255,77,106,.28)" })));
-    chart.current?.timeScale().fitContent();
+    const n = data.length;
+    chart.current?.timeScale().setVisibleLogicalRange({ from: Math.max(0, n - 300), to: n + 6 });
   }, [bars, version]);
 
   // Live bar.
@@ -149,7 +150,7 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
       }
     }
     for (const [k, prim] of [...overlays.current]) if (!instances.some((i) => i.key === k)) { candles.current?.detachPrimitive(prim); overlays.current.delete(k); }
-    c.timeScale().applyOptions({ rightOffset });
+    c.timeScale().applyOptions({ rightOffset: OverlayPrimitive.rightOffsetBars(c, rightOffset) });
     if (flagsChanged(flags.current, newFlags)) {
       flags.current = newFlags;
       candles.current?.setData(data.map((b, i) => candleItem(b, newFlags[i] ?? 0)));

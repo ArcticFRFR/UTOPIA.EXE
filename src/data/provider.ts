@@ -18,10 +18,15 @@ export interface MarketDataProvider {
   subscribeTicks(contract: ContractInfo, onTick: (t: Tick) => void): Promise<() => void>;
 }
 
-export type ProviderId = "demo" | "tradovate" | "projectx" | "rithmic";
+export type ProviderId = "demo" | "databento" | "tradovate" | "projectx" | "rithmic";
 
 export interface ProviderSettings {
   provider: ProviderId;
+  databento: {
+    apiKey: string;
+    /** Live streaming needs a Databento CME subscription; historical bars work on pay-as-you-go. */
+    live: boolean;
+  };
   tradovate: {
     environment: "demo" | "live";
     username: string;
@@ -54,6 +59,7 @@ export const PROJECTX_HOSTS: Record<Exclude<ProjectXFirm, "custom">, { api: stri
 
 export const DEFAULT_SETTINGS: ProviderSettings = {
   provider: "demo",
+  databento: { apiKey: "", live: true },
   tradovate: { environment: "demo", username: "", password: "", appId: "Utopia", appVersion: "0.1.0", cid: "", secret: "" },
   projectx: { firm: "topstepx", username: "", apiKey: "" },
   rithmic: { system: "Rithmic Paper Trading", username: "", password: "" },

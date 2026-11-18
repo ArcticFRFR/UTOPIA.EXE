@@ -41,4 +41,4 @@ export const ATR: IndicatorDef = {
   compute: ({ bars }, p) => ({ plots: { atr: ema(trueRange(bars), Math.round(p.len)) } }),
 };
 
-export const BUILTINS: IndicatorDef[] = [EMA, SMA, VWAP, ATR];
+export const BUILTINS: IndicatorDef[] = [SMA, ATR];

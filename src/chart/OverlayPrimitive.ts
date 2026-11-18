@@ -53,6 +53,15 @@ export class OverlayPrimitive implements ISeriesPrimitive<Time> {
   }
   xOfTime(t: number): number | null { return this.chart?.timeScale().logicalToCoordinate(this.logical(t) as Logical) ?? null; }
   xOfLogical(l: number): number | null { return this.chart?.timeScale().logicalToCoordinate(l as Logical) ?? null; }
+  /** Pixels per bar, floored so the HTF sets stay readable when the whole history is in view. */
+  unit(): number { return Math.max(this.chart?.timeScale().options().barSpacing ?? 7, MIN_UNIT); }
+  /** x of a point `units` bar-units to the right of the last bar, in the floored unit. */
+  xRight(units: number): number | null { const lx = this.xOfLogical(this.bars.length - 1); return lx === null ? null : lx + units * this.unit(); }
+  /** How many real bars of right offset the HTF sets need at the current zoom. */
+  static rightOffsetBars(chart: IChartApi, units: number): number {
+    const bs = chart.timeScale().options().barSpacing;
+    return Math.ceil((units * Math.max(bs, MIN_UNIT)) / Math.max(bs, 0.1));
+  }
   y(price: number): number | null { return this.series?.priceToCoordinate(price) ?? null; }
 }
 
@@ -63,6 +72,7 @@ class PaneView implements IPrimitivePaneView {
 }
 
 const DASH: Record<string, number[]> = { solid: [], dashed: [6, 4], dotted: [2, 3] };
+const MIN_UNIT = 4;
 const FONT = "11px ui-monospace, Consolas, monospace";
 const HTF_W = 2, HTF_HALF = 1, HTF_GAP = 1; // in bars, "Small"
 const HTF_BULL = "#4c9a7f", HTF_BEAR = "#d9434f", HTF_LINE = "#efe8da";
@@ -96,7 +106,12 @@ function draw(target: CanvasRenderingTarget2D, o: OverlayPrimitive, order: Primi
         if (x0 === null || x1 === null || y === null) continue;
         ctx.strokeStyle = l.color; ctx.lineWidth = l.width || 1; ctx.setLineDash(DASH[l.style] ?? []);
         ctx.beginPath(); ctx.moveTo(x0, y + 0.5); ctx.lineTo(x1, y + 0.5); ctx.stroke();
-        if (l.label) { ctx.setLineDash([]); ctx.fillStyle = l.color; ctx.textAlign = "left"; ctx.textBaseline = "bottom"; ctx.fillText(l.label, x1 + 4, y - 2); }
+        if (l.label) {
+          ctx.setLineDash([]); ctx.fillStyle = l.color; ctx.textBaseline = "bottom";
+          const w = ctx.measureText(l.label).width;
+          if (x1 + 4 + w <= mediaSize.width - 2) { ctx.textAlign = "left"; ctx.fillText(l.label, x1 + 4, y - 2); }
+          else { ctx.textAlign = "right"; ctx.fillText(l.label, mediaSize.width - 4, y - 2); }
+        }
       }
       for (const v of data.vlines) {
         const x = o.xOfTime(v.t), y0 = o.y(v.top), y1 = o.y(v.bottom);
@@ -113,15 +128,14 @@ function draw(target: CanvasRenderingTarget2D, o: OverlayPrimitive, order: Primi
       }
     } else {
       // HTF candle sets to the right of the last bar
-      const last = o.barCount - 1;
-      const lastX = o.xOfLogical(last);
+      const lastX = o.xOfLogical(o.barCount - 1);
       for (const set of data.htf) {
-        let x = last + set.gap;
+        let x = set.gap; // in bar units to the right of the last bar
         const startX = x;
         let top: number | null = null, topY: number | null = null;
         const n = set.candles.length;
         set.candles.forEach((c, i) => {
-          const xl = o.xOfLogical(x), xr = o.xOfLogical(x + HTF_W), xm = o.xOfLogical(x + HTF_HALF);
+          const xl = o.xRight(x), xr = o.xRight(x + HTF_W), xm = o.xRight(x + HTF_HALF);
           const yo = o.y(c.o), yc = o.y(c.c), yh = o.y(c.h), yl = o.y(c.l);
           if (xl !== null && xr !== null && xm !== null && yo !== null && yc !== null && yh !== null && yl !== null) {
             const bodyTop = Math.min(yo, yc), bodyBot = Math.max(yo, yc);
@@ -149,7 +163,7 @@ function draw(target: CanvasRenderingTarget2D, o: OverlayPrimitive, order: Primi
         });
         const endX = x - HTF_GAP;
         if (top !== null && topY !== null) {
-          const cx = o.xOfLogical((startX + endX) / 2);
+          const cx = o.xRight((startX + endX) / 2);
           if (cx !== null) {
             ctx.fillStyle = HTF_LINE; ctx.textAlign = "center"; ctx.textBaseline = "bottom";
             const lines = set.countdown ? [set.name, countdown(set.closeTime)] : [set.name];

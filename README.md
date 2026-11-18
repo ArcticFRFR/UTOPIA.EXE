@@ -4,7 +4,7 @@ The Utopia program: a Windows desktop app for Arctic's NQ mentorship.
 
 | Area | State |
 |---|---|
-| Chart | **Milestone 1.** Candles + volume, 1m to 1d, live ticks, indicator panes. Data from Tradovate, ProjectX (TopstepX / Alpha Futures / Bulenox) or an offline demo feed. |
+| Chart | **Milestone 1.** Candles + volume, 1m to 1d, live ticks, indicator panes. Data from Databento (licensed CME feed, verified), Tradovate, ProjectX (TopstepX / Alpha Futures / Bulenox) or an offline demo feed. |
 | Indicators | EMA, SMA, session VWAP, ATR, plus **moneybagg**, Arctic's own overlay (sessions, macros, opens, levels, HTF candles) compiled into the .exe (Rust), never shipped as script. |
 | Screen-capture block | Window excluded from software capture (OBS, Game Bar, Teams, Discord). Forced on in the Vault, optional elsewhere. |
 | Journal | Next. |
