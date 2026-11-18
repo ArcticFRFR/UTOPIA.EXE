@@ -67,6 +67,15 @@ Settings: `tauri-plugin-store` (`utopia.settings.json` in the app data dir). The
   forensic watermark (the Apostles watermarking machine, see the site brief) is the backstop for the Vault.
 - CSP in `tauri.conf.json` lists the broker hosts; add a host there when adding a provider.
 
+## Drawings (Nov 18 2026)
+`src/chart/DrawingLayer.tsx` (toolbar, pointer handling, keys V/T/R/H/B/X, Esc, Del), `DrawingsPrimitive.ts` (render +
+hit tests), `drawings.ts` (model), `coords.ts` (time ↔ logical index). Drawings live in time and price, per symbol, in
+the local store (`drawings:<symbol>`). Creation tools arm a transparent layer and switch the chart's pan/zoom off;
+in cursor mode a capture-phase pointerdown on the chart container grabs drags that start on a drawing. Arctic parked
+sign-in and cloud sync ("just a project atm"): every install keeps its own drawings; the sync layer (Discord login via
+the mentorship Supabase project, a `chart_drawings` table with per-user rules) can be added later without changing
+the local model.
+
 ## Next milestones (in the order Arctic chose)
 1. Chart + indicator: done as a first cut, moneybagg ported; needs a run against a real Tradovate/ProjectX account and
    a look at the overlay on real NQ data (the Rust tests cover the time rules, not the look).

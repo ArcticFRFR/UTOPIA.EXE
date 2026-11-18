@@ -2,6 +2,7 @@ import {
   CandlestickSeries, ColorType, CrosshairMode, HistogramSeries, LineSeries, LineStyle, createChart,
   type IChartApi, type ISeriesApi, type MouseEventParams, type UTCTimestamp,
 } from "lightweight-charts";
+import { DrawingLayer } from "./DrawingLayer";
 import { OverlayPrimitive } from "./OverlayPrimitive";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Bar } from "@/lib/types";
@@ -35,6 +36,8 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
   const overlays = useRef(new Map<string, OverlayPrimitive>()); // instanceKey -> primitive
   const flags = useRef<number[]>([]); // per-bar vector candle flags from the overlay
   const [hover, setHover] = useState<{ bar: Bar; values: Record<string, number | null> } | null>(null);
+  const [ready, setReady] = useState<{ chart: IChartApi; series: ISeriesApi<"Candlestick"> } | null>(null);
+  const wrap = useRef<HTMLDivElement>(null);
 
   const precision = useMemo(() => Math.max(0, Math.ceil(-Math.log10(tickSize))), [tickSize]);
 
@@ -70,7 +73,9 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
       setHover({ bar: { time: p.time as number, open: d.open, high: d.high, low: d.low, close: d.close, volume: vol?.value ?? 0 }, values: vals });
     };
     c.subscribeCrosshairMove(onMove);
+    setReady({ chart: c, series: candles.current });
     return () => {
+      setReady(null);
       c.unsubscribeCrosshairMove(onMove);
       for (const prim of overlays.current.values()) prim.detached();
       overlays.current.clear();
@@ -180,8 +185,9 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
   const chg = shown ? shown.close - shown.open : 0;
 
   return (
-    <div className="chart-wrap">
+    <div className="chart-wrap" ref={wrap}>
       <div ref={el} className="lw" />
+      <DrawingLayer chart={ready?.chart ?? null} series={ready?.series ?? null} bars={bars} version={version} tfSec={tfSec} symbol={symbol} container={wrap} />
       <div className="wm top"><b>{WATERMARK.title}</b><span>{WATERMARK.sub}</span></div>
       <div className="wm bottom">
         <span>{info?.tradingDate || new Date().toLocaleDateString("en-GB")}</span>

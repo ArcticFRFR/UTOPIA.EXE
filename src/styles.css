@@ -144,3 +144,20 @@ button, input, select {
 .params .pgroup { width: 100%; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--ash); margin-top: 4px; }
 .params label.chk { gap: 4px; }
 .params label.chk input { accent-color: var(--moon); margin: 0; }
+
+/* Drawing tools */
+.draw-tools {
+  position: absolute; left: 8px; top: 50%; transform: translateY(-50%); z-index: 4;
+  display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 12px;
+  background: rgba(17,13,26,.85); border: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.draw-tools button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--ash); cursor: pointer; font-size: 14px; display: grid; place-items: center; padding: 0; }
+.draw-tools button:hover { color: var(--bone); background: var(--panel-2); }
+.draw-tools button.active { color: var(--moon); background: var(--panel-2); border-color: var(--line); }
+.draw-tools button:disabled { opacity: .35; cursor: default; }
+.draw-tools .sw { width: 16px; height: 16px; border-radius: 50%; margin: 3px auto; border: 2px solid transparent; }
+.draw-tools .sw.active { border-color: var(--bone); }
+.draw-tools .sep { height: 1px; background: var(--line); margin: 3px 2px; }
+.draw-layer { position: absolute; inset: 0; z-index: 3; }
+.draw-text-input { position: absolute; z-index: 5; background: var(--panel); border: 1px solid var(--moon); border-radius: 6px; padding: 3px 6px; color: var(--bone); font-size: 12px; width: 180px; outline: none; }
+.legend { left: 56px; }
