@@ -104,6 +104,11 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
             crosshairMarkerVisible: false, title: "",
           }, def.pane === "below" ? paneOf.get(inst.key) : 0);
           lines.current.set(k, s);
+          if (def.pane === "below") {
+            // Lower panes take a quarter of the main pane's height each.
+            const pane = c.panes()[paneOf.get(inst.key)!];
+            pane?.setStretchFactor(0.25);
+          }
         }
       }
     }
