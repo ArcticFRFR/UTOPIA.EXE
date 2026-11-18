@@ -68,8 +68,14 @@ Settings: `tauri-plugin-store` (`utopia.settings.json` in the app data dir). The
 - CSP in `tauri.conf.json` lists the broker hosts; add a host there when adding a provider.
 
 ## Drawings (Nov 18 2026)
-`src/chart/DrawingLayer.tsx` (toolbar, pointer handling, keys V/T/R/H/B/X, Esc, Del), `DrawingsPrimitive.ts` (render +
-hit tests), `drawings.ts` (model), `coords.ts` (time ↔ logical index). Drawings live in time and price, per symbol, in
+`src/chart/DrawingLayer.tsx` (TradingView-style grouped toolbar with flyouts, creation flows, property bar, undo/redo,
+magnet, hide-all, delete-all; keys V T R H B X F M, Esc, Del, Ctrl+Z/Y), `DrawingsPrimitive.ts` (render + hit tests),
+`drawings.ts` (model: `GROUPS`, `GATHER` says how each tool collects points), `coords.ts` (time ↔ logical index).
+Tools: trend, ray, extended, info line, horizontal line/ray, vertical, cross, parallel channel (3 clicks), arrow; fib
+retracement, trend-based fib extension (3 clicks); long/short position (1 click, sized from ATR, handles for target,
+stop and width); rectangle, ellipse, triangle (3), path (clicks, Enter/double-click ends), brush (drag); text, note,
+price label, arrow markers; measure (ephemeral). Each drawing has colour, width, style, optional text, extend flags,
+lock. Drawings live in time and price, per symbol, in
 the local store (`drawings:<symbol>`). Creation tools arm a transparent layer and switch the chart's pan/zoom off;
 in cursor mode a capture-phase pointerdown on the chart container grabs drags that start on a drawing. Arctic parked
 sign-in and cloud sync ("just a project atm"): every install keeps its own drawings; the sync layer (Discord login via

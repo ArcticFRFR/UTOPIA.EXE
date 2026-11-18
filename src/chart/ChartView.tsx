@@ -187,7 +187,7 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
   return (
     <div className="chart-wrap" ref={wrap}>
       <div ref={el} className="lw" />
-      <DrawingLayer chart={ready?.chart ?? null} series={ready?.series ?? null} bars={bars} version={version} tfSec={tfSec} symbol={symbol} container={wrap} />
+      <DrawingLayer chart={ready?.chart ?? null} series={ready?.series ?? null} bars={bars} version={version} tfSec={tfSec} symbol={symbol} precision={precision} container={wrap} />
       <div className="wm top"><b>{WATERMARK.title}</b><span>{WATERMARK.sub}</span></div>
       <div className="wm bottom">
         <span>{info?.tradingDate || new Date().toLocaleDateString("en-GB")}</span>

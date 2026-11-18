@@ -148,16 +148,41 @@ button, input, select {
 /* Drawing tools */
 .draw-tools {
   position: absolute; left: 8px; top: 50%; transform: translateY(-50%); z-index: 4;
-  display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 12px;
-  background: rgba(17,13,26,.85); border: 1px solid var(--line); backdrop-filter: blur(8px);
+  display: flex; flex-direction: column; gap: 2px; padding: 6px; border-radius: 12px;
+  background: rgba(17,13,26,.9); border: 1px solid var(--line); backdrop-filter: blur(8px);
 }
-.draw-tools button { width: 30px; height: 30px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--ash); cursor: pointer; font-size: 14px; display: grid; place-items: center; padding: 0; }
+.draw-tools .group { position: relative; display: flex; align-items: center; }
+.draw-tools .group > button { width: 32px; }
+.draw-tools .caret { position: absolute; right: -2px; bottom: 2px; font-size: 10px; color: var(--ash); cursor: pointer; line-height: 1; }
+.draw-tools button { width: 32px; height: 30px; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--ash); cursor: pointer; font-size: 14px; display: grid; place-items: center; padding: 0; }
 .draw-tools button:hover { color: var(--bone); background: var(--panel-2); }
 .draw-tools button.active { color: var(--moon); background: var(--panel-2); border-color: var(--line); }
 .draw-tools button:disabled { opacity: .35; cursor: default; }
-.draw-tools .sw { width: 16px; height: 16px; border-radius: 50%; margin: 3px auto; border: 2px solid transparent; }
-.draw-tools .sw.active { border-color: var(--bone); }
 .draw-tools .sep { height: 1px; background: var(--line); margin: 3px 2px; }
+.draw-tools .flyout {
+  position: absolute; left: 40px; top: -6px; z-index: 6; min-width: 230px; padding: 6px; border-radius: 10px;
+  background: rgba(17,13,26,.97); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(0,0,0,.5);
+}
+.draw-tools .flyout .fly-title { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ash); padding: 4px 8px 6px; }
+.draw-tools .flyout button { width: 100%; height: 30px; display: flex; align-items: center; gap: 10px; padding: 0 8px; font-size: 12.5px; color: var(--bone); border-radius: 6px; }
+.draw-tools .flyout button .g { width: 20px; text-align: center; color: var(--ash); font-size: 14px; }
+.draw-tools .flyout button.active .g { color: var(--moon); }
+.draw-tools .flyout button kbd { margin-left: auto; font-family: var(--mono); font-size: 10px; color: var(--ash); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
 .draw-layer { position: absolute; inset: 0; z-index: 3; }
 .draw-text-input { position: absolute; z-index: 5; background: var(--panel); border: 1px solid var(--moon); border-radius: 6px; padding: 3px 6px; color: var(--bone); font-size: 12px; width: 180px; outline: none; }
-.legend { left: 56px; }
+.draw-props {
+  position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 5;
+  display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 10px;
+  background: rgba(17,13,26,.95); border: 1px solid var(--line); backdrop-filter: blur(8px);
+}
+.draw-props .name { font-size: 11px; color: var(--ash); margin-right: 6px; white-space: nowrap; }
+.draw-props button { width: 28px; height: 26px; border-radius: 6px; border: 1px solid transparent; background: transparent; color: var(--ash); cursor: pointer; font-size: 12px; display: grid; place-items: center; padding: 0; }
+.draw-props button:hover { color: var(--bone); background: var(--panel-2); }
+.draw-props button.active { color: var(--moon); background: var(--panel-2); border-color: var(--line); }
+.draw-props button i { display: block; width: 14px; background: currentColor; border-radius: 2px; }
+.draw-props .sw { width: 14px; height: 14px; border-radius: 50%; border: 2px solid transparent; margin: 0 2px; }
+.draw-props .sw.active { border-color: var(--bone); }
+.draw-props .sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
+.draw-props .txt { background: var(--void); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; color: var(--bone); font-size: 12px; width: 150px; outline: none; }
+.draw-props .txt:focus { border-color: var(--moon); }
+.legend { left: 56px; top: 44px; }
