@@ -8,7 +8,7 @@ export const EMA: IndicatorDef = {
   pane: "price",
   params: [{ key: "len", label: "Length", default: 21, min: 1, max: 500, step: 1 }],
   plots: [{ key: "ema", label: "EMA", color: "#ff8a1f", lineWidth: 2 }],
-  compute: (bars, p) => ({ ema: ema(bars.map((b) => b.close), Math.round(p.len)) }),
+  compute: ({ bars }, p) => ({ plots: { ema: ema(bars.map((b) => b.close), Math.round(p.len)) } }),
 };
 
 export const SMA: IndicatorDef = {
@@ -18,7 +18,7 @@ export const SMA: IndicatorDef = {
   pane: "price",
   params: [{ key: "len", label: "Length", default: 50, min: 1, max: 500, step: 1 }],
   plots: [{ key: "sma", label: "SMA", color: "#d64aa0", lineWidth: 2 }],
-  compute: (bars, p) => ({ sma: sma(bars.map((b) => b.close), Math.round(p.len)) }),
+  compute: ({ bars }, p) => ({ plots: { sma: sma(bars.map((b) => b.close), Math.round(p.len)) } }),
 };
 
 export const VWAP: IndicatorDef = {
@@ -28,7 +28,7 @@ export const VWAP: IndicatorDef = {
   pane: "price",
   params: [],
   plots: [{ key: "vwap", label: "VWAP", color: "#efe8da", lineWidth: 1 }],
-  compute: (bars) => ({ vwap: sessionVwap(bars) }),
+  compute: ({ bars }) => ({ plots: { vwap: sessionVwap(bars) } }),
 };
 
 export const ATR: IndicatorDef = {
@@ -38,7 +38,7 @@ export const ATR: IndicatorDef = {
   pane: "below",
   params: [{ key: "len", label: "Length", default: 14, min: 1, max: 200, step: 1 }],
   plots: [{ key: "atr", label: "ATR", color: "#8d879a", lineWidth: 1 }],
-  compute: (bars, p) => ({ atr: ema(trueRange(bars), Math.round(p.len)) }),
+  compute: ({ bars }, p) => ({ plots: { atr: ema(trueRange(bars), Math.round(p.len)) } }),
 };
 
 export const BUILTINS: IndicatorDef[] = [EMA, SMA, VWAP, ATR];

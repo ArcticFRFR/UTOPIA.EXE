@@ -14,9 +14,10 @@ Settings: `tauri-plugin-store` (`utopia.settings.json` in the app data dir). The
 `windows-latest` (`.github/workflows/build.yml`); this is why Rust code must stay portable and compile on Linux too.
 
 ## Rules carried over from the site
-- SEALED: nothing in this repo may describe what Arctic trades or teaches. The indicator's maths lives in
-  `src-tauri/src/sealed.rs` so it ships compiled, not as readable JS. Do not move it to TypeScript. What is there now
-  is a PLACEHOLDER (EMA bias in ATR units + session VWAP) until Arctic supplies his logic; swap the body of `compute`.
+- SEALED: nothing in this repo may describe what Arctic trades or teaches. The indicator ("moneybagg", his Pine v6
+  overlay, supplied Nov 18 2026) is ported in `src-tauri/src/sealed.rs` so it ships compiled, not as readable JS.
+  Do not move any of it to TypeScript; the web side (`src/indicators/sealed.ts`) only lists switches and draws what
+  Rust returns. Outside Tauri it draws a generic dev fixture, never the real thing.
 - Education only. Keep the "not advice / not a performance claim" lines.
 - Never invent prices, member counts, results.
 
@@ -29,9 +30,17 @@ Settings: `tauri-plugin-store` (`utopia.settings.json` in the app data dir). The
   from the public API docs and have NOT been run against live accounts yet (no credentials in the cloud); expect to
   touch field names on first contact.
 - `src/data/aggregate.ts`: bar opens, resampling and tick → bar. Daily bars open 22:00 UTC (Globex). Tested.
-- `src/indicators/`: `types.ts` (an indicator = params + plots + `compute(bars, params)`), `builtins.ts`,
-  `sealed.ts` (calls Rust `compute_sealed`), `engine.ts` (`computeAll` + a coalescing scheduler so ticks do not pile up).
-  Indicators with `pane: "below"` get their own Lightweight Charts pane.
+- `src/indicators/`: `types.ts` (an indicator = params + plots + `compute({bars, ctx, tfSec}, params)` returning
+  `{plots, overlay?}`), `builtins.ts`, `sealed.ts` (calls Rust `compute_sealed`), `engine.ts` (`computeAll` + a
+  coalescing scheduler so ticks do not pile up). Indicators with `pane: "below"` get their own Lightweight Charts pane.
+  `ctx` is 1-hour bars reaching ~10 weeks back (`useMarket` fetches them beside the chart bars and folds ticks into
+  both); the sealed overlay builds daily/weekly opens, previous-day levels and the HTF candle sets from it.
+- The sealed overlay (`Overlay` in types.ts, mirrored by the Rust struct): boxes, hlines, vlines, texts, per-bar
+  vector-candle flags, two plots (weekly/daily open) and the HTF sets, plus `rightOffsetBars` so the chart leaves room
+  on the right. `src/chart/OverlayPrimitive.ts` is a Lightweight Charts series primitive that draws it; it maps times
+  to logical bar indices itself so shapes can reach past the last bar. Time rules inside Rust: everything on New York's
+  clock except the London box (London) and the Frankfurt open (Berlin), via `chrono-tz`; CME trading date = NY date of
+  (t + 6h); day 18:00→17:00 NY; week = ISO week of the trading date, ending Friday 17:00 NY.
 - `src/chart/useMarket.ts` owns the provider and the bar array (a ref mutated by ticks; `version` bumps re-renders).
   `ChartView.tsx` is the only file that talks to Lightweight Charts. `ChartPage.tsx` is the toolbar + indicator panel.
 - `src-tauri/src/lib.rs`: `set_content_protection` wraps Tauri's `set_content_protected` (Windows
@@ -41,7 +50,8 @@ Settings: `tauri-plugin-store` (`utopia.settings.json` in the app data dir). The
 - CSP in `tauri.conf.json` lists the broker hosts; add a host there when adding a provider.
 
 ## Next milestones (in the order Arctic chose)
-1. Chart + indicator: done as a first cut; needs a run against a real Tradovate/ProjectX account and his indicator.
+1. Chart + indicator: done as a first cut, moneybagg ported; needs a run against a real Tradovate/ProjectX account and
+   a look at the overlay on real NQ data (the Rust tests cover the time rules, not the look).
 2. Vault: Discord-role gate (reuse the mentorship repo's Supabase + Discord OAuth), signed streaming URLs, per-student
    watermarked copies, capture block forced on. Consider `tauri-plugin-sql` for a local cache.
 3. Journal: SQLite (`tauri-plugin-sql`, sqlite feature), trades, screenshots, tags, daily review, stats, CSV export.

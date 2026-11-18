@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ProviderSettings } from "@/data/provider";
 import { computeAll, makeScheduler, REGISTRY, byId, type Results } from "@/indicators/engine";
-import { defaultParams, type IndicatorInstance } from "@/indicators/types";
+import { defaultParams, type IndicatorInstance, type IndicatorParam } from "@/indicators/types";
 import { loadSetting, saveSetting } from "@/lib/store";
-import { TIMEFRAMES, type Timeframe } from "@/lib/types";
+import { TIMEFRAMES, timeframeSeconds, type Timeframe } from "@/lib/types";
 import { ChartView } from "./ChartView";
 import { useMarket } from "./useMarket";
 
@@ -33,9 +33,9 @@ export function ChartPage({ settings }: { settings: ProviderSettings }) {
 
   // Recompute indicators on history load and on every live bar change, coalesced.
   const recompute = useMemo(() => makeScheduler(async () => {
-    const r = await computeAll(instances, market.bars.current);
+    const r = await computeAll(instances, { bars: market.bars.current, ctx: market.ctx.current, tfSec: timeframeSeconds(tf) });
     setResults(r);
-  }), [instances, market.bars]);
+  }), [instances, market.bars, market.ctx, tf]);
   useEffect(() => { void recompute(); }, [recompute, market.version, market.lastBar]);
 
   const toggle = useCallback((key: string) => setInstances((xs) => xs.map((x) => (x.key === key ? { ...x, enabled: !x.enabled } : x))), []);
@@ -68,7 +68,8 @@ export function ChartPage({ settings }: { settings: ProviderSettings }) {
       </div>
       {market.error && <div className="err" style={{ padding: "8px 12px", background: "var(--dusk)", borderBottom: "1px solid var(--line)" }}>{market.error}</div>}
       <div className="split">
-        <ChartView bars={market.bars} version={market.version} lastBar={market.lastBar} instances={instances} results={results} tickSize={market.contract?.tickSize ?? 0.25} />
+        <ChartView bars={market.bars} version={market.version} lastBar={market.lastBar} instances={instances} results={results}
+          tickSize={market.contract?.tickSize ?? 0.25} tfSec={timeframeSeconds(tf)} symbol={market.contract?.symbol ?? symbol} tf={tf} />
         {sideOpen && (
           <aside className="side">
             <h3>Indicators</h3>
@@ -88,16 +89,22 @@ export function ChartPage({ settings }: { settings: ProviderSettings }) {
                       {!def.sealed && <button className="pill" onClick={() => remove(inst.key)} title="Remove">×</button>}
                     </div>
                     <div className="desc">{def.description}</div>
-                    {def.params.length > 0 && (
-                      <div className="params">
-                        {def.params.map((p) => (
+                    {def.params.length > 0 && groups(def.params).map(([g, ps]) => (
+                      <div className="params" key={g}>
+                        {g && <span className="pgroup">{g}</span>}
+                        {ps.map((p) => p.type === "bool" ? (
+                          <label key={p.key} className="chk">
+                            <input type="checkbox" checked={(inst.params[p.key] ?? p.default) !== 0}
+                              onChange={(e) => setParam(inst.key, p.key, e.target.checked ? 1 : 0)} />{p.label}
+                          </label>
+                        ) : (
                           <label key={p.key}>{p.label}
                             <input type="number" value={inst.params[p.key] ?? p.default} min={p.min} max={p.max} step={p.step}
                               onChange={(e) => setParam(inst.key, p.key, Number(e.target.value))} />
                           </label>
                         ))}
                       </div>
-                    )}
+                    ))}
                   </div>
                 );
               })}
@@ -112,4 +119,10 @@ export function ChartPage({ settings }: { settings: ProviderSettings }) {
       </div>
     </section>
   );
+}
+
+function groups(ps: IndicatorParam[]): Array<[string, IndicatorParam[]]> {
+  const m = new Map<string, IndicatorParam[]>();
+  for (const p of ps) { const g = p.group ?? ""; if (!m.has(g)) m.set(g, []); m.get(g)!.push(p); }
+  return [...m];
 }

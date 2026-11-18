@@ -1,7 +1,8 @@
 import {
-  CandlestickSeries, ColorType, CrosshairMode, HistogramSeries, LineSeries, createChart,
+  CandlestickSeries, ColorType, CrosshairMode, HistogramSeries, LineSeries, LineStyle, createChart,
   type IChartApi, type ISeriesApi, type MouseEventParams, type UTCTimestamp,
 } from "lightweight-charts";
+import { OverlayPrimitive } from "./OverlayPrimitive";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Bar } from "@/lib/types";
 import type { Results } from "@/indicators/engine";
@@ -15,16 +16,24 @@ interface Props {
   instances: IndicatorInstance[];
   results: Results;
   tickSize: number;
+  tfSec: number;
+  symbol: string;
+  tf: string;
 }
 
 const fmtTime = (t: number) => new Date(t * 1000).toLocaleString(undefined, { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
 
-export function ChartView({ bars, version, lastBar, instances, results, tickSize }: Props) {
+const VEC_BULL = "#22c55e", VEC_BEAR = "#ef4444", VEC_BORDER = "#efe8da";
+const WATERMARK = { title: "Arctic x Apostles", sub: "Arctic :)" };
+
+export function ChartView({ bars, version, lastBar, instances, results, tickSize, tfSec, symbol, tf }: Props) {
   const el = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const candles = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volume = useRef<ISeriesApi<"Histogram"> | null>(null);
   const lines = useRef(new Map<string, ISeriesApi<"Line">>()); // `${instanceKey}:${plotKey}`
+  const overlays = useRef(new Map<string, OverlayPrimitive>()); // instanceKey -> primitive
+  const flags = useRef<number[]>([]); // per-bar vector candle flags from the overlay
   const [hover, setHover] = useState<{ bar: Bar; values: Record<string, number | null> } | null>(null);
 
   const precision = useMemo(() => Math.max(0, Math.ceil(-Math.log10(tickSize))), [tickSize]);
@@ -61,7 +70,14 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
       setHover({ bar: { time: p.time as number, open: d.open, high: d.high, low: d.low, close: d.close, volume: vol?.value ?? 0 }, values: vals });
     };
     c.subscribeCrosshairMove(onMove);
-    return () => { c.unsubscribeCrosshairMove(onMove); c.remove(); chart.current = null; lines.current.clear(); };
+    return () => {
+      c.unsubscribeCrosshairMove(onMove);
+      for (const prim of overlays.current.values()) prim.detached();
+      overlays.current.clear();
+      c.remove();
+      chart.current = null; candles.current = null; volume.current = null;
+      lines.current.clear();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -72,7 +88,7 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
   // Full data load.
   useEffect(() => {
     const data = bars.current;
-    candles.current?.setData(data.map((b) => ({ time: b.time as UTCTimestamp, open: b.open, high: b.high, low: b.low, close: b.close })));
+    candles.current?.setData(data.map((b, i) => candleItem(b, flags.current[i] ?? 0)));
     volume.current?.setData(data.map((b) => ({ time: b.time as UTCTimestamp, value: b.volume, color: b.close >= b.open ? "rgba(57,217,138,.28)" : "rgba(255,77,106,.28)" })));
     chart.current?.timeScale().fitContent();
   }, [bars, version]);
@@ -80,7 +96,7 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
   // Live bar.
   useEffect(() => {
     if (!lastBar) return;
-    candles.current?.update({ time: lastBar.time as UTCTimestamp, open: lastBar.open, high: lastBar.high, low: lastBar.low, close: lastBar.close });
+    candles.current?.update(candleItem(lastBar, flags.current[bars.current.length - 1] ?? 0));
     volume.current?.update({ time: lastBar.time as UTCTimestamp, value: lastBar.volume, color: lastBar.close >= lastBar.open ? "rgba(57,217,138,.28)" : "rgba(255,77,106,.28)" });
   }, [lastBar]);
 
@@ -102,6 +118,7 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
           const s = c.addSeries(LineSeries, {
             color: plot.color, lineWidth: plot.lineWidth ?? 2, priceLineVisible: false, lastValueVisible: def.pane === "below",
             crosshairMarkerVisible: false, title: "",
+            lineStyle: plot.lineStyle === "dotted" ? LineStyle.Dotted : plot.lineStyle === "dashed" ? LineStyle.Dashed : LineStyle.Solid,
           }, def.pane === "below" ? paneOf.get(inst.key) : 0);
           lines.current.set(k, s);
           if (def.pane === "below") {
@@ -116,8 +133,29 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
       if (!want.has(k)) { c.removeSeries(s); lines.current.delete(k); }
     }
     const data = bars.current;
+    // Overlays (sealed drawings): one primitive per instance that returns one.
+    let rightOffset = 6;
+    let newFlags: number[] = [];
     for (const inst of instances) {
-      const plots = results.get(inst.key);
+      const ov = inst.enabled ? results.get(inst.key)?.overlay : undefined;
+      let prim = overlays.current.get(inst.key);
+      if (ov && candles.current) {
+        if (!prim) { prim = new OverlayPrimitive(); candles.current.attachPrimitive(prim); overlays.current.set(inst.key, prim); }
+        prim.setData(ov, data, tfSec);
+        rightOffset = Math.max(rightOffset, ov.rightOffsetBars);
+        if (ov.candles.length) newFlags = ov.candles;
+      } else if (prim) {
+        candles.current?.detachPrimitive(prim); overlays.current.delete(inst.key);
+      }
+    }
+    for (const [k, prim] of [...overlays.current]) if (!instances.some((i) => i.key === k)) { candles.current?.detachPrimitive(prim); overlays.current.delete(k); }
+    c.timeScale().applyOptions({ rightOffset });
+    if (flagsChanged(flags.current, newFlags)) {
+      flags.current = newFlags;
+      candles.current?.setData(data.map((b, i) => candleItem(b, newFlags[i] ?? 0)));
+    }
+    for (const inst of instances) {
+      const plots = results.get(inst.key)?.plots;
       if (!plots) continue;
       for (const [plotKey, values] of Object.entries(plots)) {
         const s = lines.current.get(`${inst.key}:${plotKey}`);
@@ -130,7 +168,12 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
         s.setData(pts);
       }
     }
-  }, [instances, results, bars, version]);
+  }, [instances, results, bars, version, tfSec]);
+
+  const info = useMemo(() => {
+    for (const inst of instances) { const ov = results.get(inst.key)?.overlay; if (ov) return ov.info; }
+    return null;
+  }, [instances, results]);
 
   const shown = hover?.bar ?? lastBar ?? bars.current[bars.current.length - 1];
   const chg = shown ? shown.close - shown.open : 0;
@@ -138,6 +181,12 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
   return (
     <div className="chart-wrap">
       <div ref={el} className="lw" />
+      <div className="wm top"><b>{WATERMARK.title}</b><span>{WATERMARK.sub}</span></div>
+      <div className="wm bottom">
+        <span>{info?.tradingDate || new Date().toLocaleDateString("en-GB")}</span>
+        <span>{symbol} | {tf.toUpperCase()}</span>
+        {info && <span>London +{(info.gapMinutes / 60).toString()}h vs New York{info.gapMinutes !== 300 ? "  (UK & US clocks out of step)" : ""}</span>}
+      </div>
       <div className="legend">
         {shown && (
           <div className="row">
@@ -154,7 +203,7 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
           if (!def) return null;
           return def.plots.map((p) => {
             const k = `${inst.key}:${p.key}`;
-            const v = hover ? hover.values[k] : lastValue(results.get(inst.key)?.[p.key]);
+            const v = hover ? hover.values[k] : lastValue(results.get(inst.key)?.plots[p.key]);
             return (
               <div className="ind" key={k}>
                 <span className="sw" style={{ background: p.color }} />
@@ -170,12 +219,25 @@ export function ChartView({ bars, version, lastBar, instances, results, tickSize
   );
 }
 
+function candleItem(b: Bar, flag: number) {
+  const base = { time: b.time as UTCTimestamp, open: b.open, high: b.high, low: b.low, close: b.close };
+  if (flag === 0) return base;
+  const col = flag > 0 ? VEC_BULL : VEC_BEAR;
+  return { ...base, color: col, wickColor: col, borderColor: VEC_BORDER };
+}
+function flagsChanged(a: number[], b: number[]) {
+  if (a.length !== b.length) return true;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return true;
+  return false;
+}
 function lastValue(arr?: Array<number | null>) {
   if (!arr) return null;
   for (let i = arr.length - 1; i >= 0; i--) if (arr[i] !== null) return arr[i];
   return null;
 }
 function paramSuffix(inst: IndicatorInstance) {
-  const vals = Object.values(inst.params);
+  const def = byId(inst.defId);
+  if (!def || def.sealed) return "";
+  const vals = def.params.filter((p) => p.type !== "bool").map((p) => inst.params[p.key] ?? p.default);
   return vals.length ? ` ${vals.join(" ")}` : "";
 }

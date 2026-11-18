@@ -1,5 +1,5 @@
 import type { Bar, ContractInfo, Tick, Timeframe } from "@/lib/types";
-import { timeframeSeconds } from "@/lib/types";
+import { resample } from "./aggregate";
 import type { MarketDataProvider } from "./provider";
 
 /**
@@ -37,28 +37,37 @@ export class DemoProvider implements MarketDataProvider {
     return 0.5;
   }
 
-  async history(_c: ContractInfo, tf: Timeframe, count: number): Promise<Bar[]> {
-    const size = timeframeSeconds(tf);
-    const end = Math.floor(Date.now() / 1000 / size) * size;
+  private base: Bar[] | null = null;
+
+  /** One deterministic 1-minute series covering ~70 days, generated once; every timeframe resamples it. */
+  private baseSeries(): Bar[] {
+    if (this.base) return this.base;
+    const end = Math.floor(Date.now() / 60000) * 60;
+    const start = end - 70 * 86400;
     const bars: Bar[] = [];
     this.seed = 20261118;
     let price = 21500;
-    for (let i = count; i >= 0; i--) {
-      const t = end - i * size;
-      const v = this.vol(t) * Math.sqrt(size / 60) * 2.5;
+    const q = (x: number) => Math.round(x * 4) / 4;
+    for (let t = start; t <= end; t += 60) {
+      const d = new Date(t * 1000);
+      const dow = d.getUTCDay(), h = d.getUTCHours();
+      // CME hours: closed Fri 22:00 UTC -> Sun 23:00 UTC, and 22:00-23:00 UTC daily
+      if (dow === 6 || (dow === 5 && h >= 22) || (dow === 0 && h < 23) || h === 22) continue;
+      const v = this.vol(t) * 2.5;
       const open = price;
       let hi = open, lo = open, p = open;
-      const steps = 8;
-      for (let s = 0; s < steps; s++) {
-        p += (this.rnd() - 0.5) * v;
-        hi = Math.max(hi, p); lo = Math.min(lo, p);
-      }
-      const q = (x: number) => Math.round(x * 4) / 4;
-      bars.push({ time: t, open: q(open), high: q(hi), low: q(lo), close: q(p), volume: Math.round(200 + this.rnd() * 1800 * this.vol(t)) });
+      for (let s = 0; s < 4; s++) { p += (this.rnd() - 0.5) * v; hi = Math.max(hi, p); lo = Math.min(lo, p); }
+      bars.push({ time: t, open: q(open), high: q(hi), low: q(lo), close: q(p), volume: Math.round(50 + this.rnd() * 450 * this.vol(t)) });
       price = p;
     }
     this.last = price;
+    this.base = bars;
     return bars;
+  }
+
+  async history(_c: ContractInfo, tf: Timeframe, count: number): Promise<Bar[]> {
+    const all = resample(this.baseSeries(), tf);
+    return all.slice(Math.max(0, all.length - count));
   }
 
   async subscribeTicks(_c: ContractInfo, onTick: (t: Tick) => void): Promise<() => void> {

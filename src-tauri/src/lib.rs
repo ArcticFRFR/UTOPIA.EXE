@@ -34,9 +34,16 @@ fn set_content_protection(app: tauri::AppHandle, on: bool) -> Result<bool, Strin
     Ok(on)
 }
 
+/// The sealed overlay. `bars` are the chart's bars, `ctx` are 1-hour bars covering weeks back
+/// (for daily/weekly opens, previous day levels and the HTF candle previews), `tf_sec` the chart timeframe.
 #[tauri::command]
-fn compute_sealed(bars: Vec<sealed::Bar>, params: std::collections::HashMap<String, f64>) -> sealed::Output {
-    sealed::compute(&bars, &params)
+fn compute_sealed(
+    bars: Vec<sealed::Bar>,
+    ctx: Vec<sealed::Bar>,
+    tf_sec: i64,
+    params: std::collections::HashMap<String, f64>,
+) -> sealed::Overlay {
+    sealed::compute(&bars, &ctx, tf_sec, &params)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

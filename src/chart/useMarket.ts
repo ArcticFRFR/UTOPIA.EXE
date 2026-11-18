@@ -5,6 +5,7 @@ import type { MarketDataProvider, ProviderSettings } from "@/data/provider";
 import type { Bar, ContractInfo, FeedState, Timeframe } from "@/lib/types";
 
 const HISTORY = 1500;
+const CTX_HOURS = 1200; // ~10 trading weeks of 1-hour bars for daily/weekly context
 
 /**
  * Owns the provider, the bar array for the current symbol/timeframe and the live tick stream.
@@ -13,6 +14,7 @@ const HISTORY = 1500;
 export function useMarket(settings: ProviderSettings, symbol: string, tf: Timeframe) {
   const providerRef = useRef<MarketDataProvider | null>(null);
   const barsRef = useRef<Bar[]>([]);
+  const ctxRef = useRef<Bar[]>([]);
   const [contract, setContract] = useState<ContractInfo | null>(null);
   const [state, setState] = useState<FeedState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export function useMarket(settings: ProviderSettings, symbol: string, tf: Timefr
       // Ask for 1m when the provider can serve it and we need to resample; providers already resample daily.
       const bars = await p.history(c, tf, HISTORY);
       barsRef.current = tf === "1d" ? bars : resample(bars, tf);
+      ctxRef.current = tf === "1h" ? barsRef.current.slice() : await p.history(c, "1h", CTX_HOURS);
       setLastBar(barsRef.current[barsRef.current.length - 1] ?? null);
       setState(p.id === "demo" ? "demo" : "live");
       setVersion((v) => v + 1);
@@ -58,10 +61,11 @@ export function useMarket(settings: ProviderSettings, symbol: string, tf: Timefr
     let cancelled = false;
     p.subscribeTicks(contract, (t) => {
       const b = applyTick(barsRef.current, t, tf);
+      applyTick(ctxRef.current, t, "1h");
       setLastBar({ ...b });
     }).then((u) => { if (cancelled) u(); else off = u; }).catch((e) => setError(String(e)));
     return () => { cancelled = true; off?.(); };
   }, [contract, state, tf]);
 
-  return { bars: barsRef, version, lastBar, contract, state, error, reload, providerLabel: providerRef.current?.label ?? "" };
+  return { bars: barsRef, ctx: ctxRef, version, lastBar, contract, state, error, reload, providerLabel: providerRef.current?.label ?? "" };
 }
