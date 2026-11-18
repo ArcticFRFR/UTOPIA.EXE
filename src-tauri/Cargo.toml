@@ -1,0 +1,29 @@
+[package]
+name = "utopia"
+version = "0.1.0"
+description = "Utopia desktop: chart, indicators, journal, vault, copy trader"
+authors = ["Arctic"]
+edition = "2024"
+rust-version = "1.90"
+
+[lib]
+name = "utopia_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde_json = "1"
+serde = { version = "1", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2", features = [] }
+tauri-plugin-log = "2"
+tauri-plugin-store = "2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true
